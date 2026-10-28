@@ -1,0 +1,40 @@
+name: Build MyOS ISO
+
+# Скрипт будет запускаться при каждом пуше в ветку main 
+# и вручную по кнопке "Run workflow" (workflow_dispatch)
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build_os:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Клонируем репозиторий со скриптом build_os.sh
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Устанавливаем все необходимые пакеты для сборки Ядра, GRUB и ISO
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bison flex libncurses-dev \
+          libssl-dev libelf-dev bc wget xorriso grub-pc-bin grub-efi mtools dialog
+
+      # 3. Запускаем наш генератор (компилятор)
+      - name: Compile Kernel, Busybox and Build ISO
+        run: |
+          # Убеждаемся, что скрипт имеет права на исполнение
+          chmod +x build_iso.sh
+          # Запускаем от root, так как монтирование и grub-mkrescue требуют прав
+          sudo ./build_iso.sh
+
+      # 4. Загружаем готовый ISO образ как артефакт, чтобы его можно было скачать
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my_os_bootable_iso
+          path: my_os.iso
+          retention-days: 7 # Файл будет храниться на GitHub 7 дней
